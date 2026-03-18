@@ -10,7 +10,7 @@ API_TOKEN = '8697332622:AAGDEbHpeoJIkT3lPks0PiuThWvLwF1PHN4'
 bot = telebot.TeleBot(API_TOKEN)
 USER_FILE = "users.txt"
 
-# आपकी चैट आईडी - ताकि प्रेडिक्शन सीधा आपके पास आए
+# आपकी चैट आईडी
 ADMIN_IDS = ['6816515814']
 
 def save_user(user_id):
@@ -32,18 +32,33 @@ def get_all_users():
 
 def get_game_data():
     try:
-        ts = int(time.time() * 1000)
-        url = f"https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?ts={ts}"
-        res = requests.get(url, timeout=15).json()
-        if res and 'data' in res and res['data']['list']:
-            return res['data']['list'][0]
+        # नया वर्किंग API URL
+        url = "https://api.91clubapi.com/api/webapi/GetNoaverageEmerdList"
+        payload = {
+            "typeId": 1,
+            "customerrId": 20000,
+            "isFirst": 0,
+            "pageNo": 1,
+            "pageSize": 10
+        }
+        headers = {
+            "Content-Type": "application/json;charset=UTF-8",
+            "Accept": "application/json, text/plain, */*"
+        }
+        res = requests.post(url, json=payload, headers=headers, timeout=10).json()
+        if res and res.get('data') and res['data'].get('list'):
+            item = res['data']['list'][0]
+            return {
+                'issueNumber': item['issueNumber'],
+                'number': item['number']
+            }
     except:
         return None
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     save_user(message.chat.id)
-    bot.reply_to(message, "🚀 *Jalwa Game Bot* अब एक्टिव है!\n\nआपको हर मिनट प्रेडिक्शन मिलता रहेगा।", parse_mode="Markdown")
+    bot.reply_to(message, "🚀 *Jalwa Game Bot* अब एक्टिव है!\n\nअब आपको हर मिनट प्रेडिक्शन मिलता रहेगा।", parse_mode="Markdown")
 
 def start_auto_prediction():
     last_processed_period = ""
@@ -64,11 +79,10 @@ def start_auto_prediction():
                     except:
                         continue
                 last_processed_period = data['issueNumber']
-            time.sleep(10)
+            time.sleep(15) # 15 सेकंड बाद फिर चेक करेगा
         except:
             time.sleep(5)
 
-# Render के लिए सर्वर
 app = Flask(__name__)
 @app.route('/')
 def home(): return "Bot is Alive"
@@ -81,4 +95,4 @@ if __name__ == "__main__":
     threading.Thread(target=start_auto_prediction, daemon=True).start()
     threading.Thread(target=run_web, daemon=True).start()
     bot.infinity_polling()
-
+    
